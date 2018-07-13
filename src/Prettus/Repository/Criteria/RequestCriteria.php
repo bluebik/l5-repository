@@ -10,7 +10,6 @@ use Prettus\Repository\Contracts\RepositoryInterface;
 /**
  * Class RequestCriteria
  * @package Prettus\Repository\Criteria
- * @author Anderson Andrade <contato@andersonandra.de>
  */
 class RequestCriteria implements CriteriaInterface
 {
@@ -44,18 +43,20 @@ class RequestCriteria implements CriteriaInterface
         $sortedBy = $this->request->get(config('repository.criteria.params.sortedBy', 'sortedBy'), 'asc');
         $with = $this->request->get(config('repository.criteria.params.with', 'with'), null);
         $searchJoin = $this->request->get(config('repository.criteria.params.searchJoin', 'searchJoin'), null);
+        $searchAndFields = $this->request->get(config('repository.criteria.params.searchAnd', 'searchAndFields'), null);
         $sortedBy = !empty($sortedBy) ? $sortedBy : 'asc';
 
         if ($search && is_array($fieldsSearchable) && count($fieldsSearchable)) {
 
             $searchFields = is_array($searchFields) || is_null($searchFields) ? $searchFields : explode(';', $searchFields);
             $fields = $this->parserFieldsSearch($fieldsSearchable, $searchFields);
+            $andFields = explode(';', $searchAndFields);
             $isFirstField = true;
             $searchData = $this->parserSearchData($search);
             $search = $this->parserSearchValue($search);
             $modelForceAndWhere = strtolower($searchJoin) === 'and';
 
-            $model = $model->where(function ($query) use ($fields, $search, $searchData, $isFirstField, $modelForceAndWhere) {
+            $model = $model->where(function ($query) use ($fields, $search, $searchData, $isFirstField, $modelForceAndWhere, $andFields) {
                 /** @var Builder $query */
 
                 foreach ($fields as $field => $condition) {
@@ -78,31 +79,31 @@ class RequestCriteria implements CriteriaInterface
                     }
 
                     $relation = null;
-                    if(stripos($field, '.')) {
+                    if (stripos($field, '.')) {
                         $explode = explode('.', $field);
                         $field = array_pop($explode);
                         $relation = implode('.', $explode);
                     }
                     $modelTableName = $query->getModel()->getTable();
-                    if ( $isFirstField || $modelForceAndWhere ) {
+                    if ($isFirstField || $modelForceAndWhere || in_array($field, $andFields)) {
                         if (!is_null($value)) {
-                            if(!is_null($relation)) {
-                                $query->whereHas($relation, function($query) use($field,$condition,$value) {
-                                    $query->where($field,$condition,$value);
+                            if (!is_null($relation)) {
+                                $query->whereHas($relation, function ($query) use ($field, $condition, $value) {
+                                    $query->where($field, $condition, $value);
                                 });
                             } else {
-                                $query->where($modelTableName.'.'.$field,$condition,$value);
+                                $query->where($modelTableName . '.' . $field, $condition, $value);
                             }
                             $isFirstField = false;
                         }
                     } else {
                         if (!is_null($value)) {
-                            if(!is_null($relation)) {
-                                $query->orWhereHas($relation, function($query) use($field,$condition,$value) {
-                                    $query->where($field,$condition,$value);
+                            if (!is_null($relation)) {
+                                $query->orWhereHas($relation, function ($query) use ($field, $condition, $value) {
+                                    $query->where($field, $condition, $value);
                                 });
                             } else {
-                                $query->orWhere($modelTableName.'.'.$field, $condition, $value);
+                                $query->orWhere($modelTableName . '.' . $field, $condition, $value);
                             }
                         }
                     }
@@ -112,7 +113,7 @@ class RequestCriteria implements CriteriaInterface
 
         if (isset($orderBy) && !empty($orderBy)) {
             $split = explode('|', $orderBy);
-            if(count($split) > 1) {
+            if (count($split) > 1) {
                 /*
                  * ex.
                  * products|description -> join products on current_table.product_id = products.id order by description
@@ -125,9 +126,9 @@ class RequestCriteria implements CriteriaInterface
                 $sortColumn = $split[1];
 
                 $split = explode(':', $sortTable);
-                if(count($split) > 1) {
+                if (count($split) > 1) {
                     $sortTable = $split[0];
-                    $keyName = $table.'.'.$split[1];
+                    $keyName = $table . '.' . $split[1];
                 } else {
                     /*
                      * If you do not define which column to use as a joining column on current table, it will
@@ -137,13 +138,13 @@ class RequestCriteria implements CriteriaInterface
                      * products -> product_id
                      */
                     $prefix = str_singular($sortTable);
-                    $keyName = $table.'.'.$prefix.'_id';
+                    $keyName = $table . '.' . $prefix . '_id';
                 }
 
                 $model = $model
-                    ->leftJoin($sortTable, $keyName, '=', $sortTable.'.id')
+                    ->leftJoin($sortTable, $keyName, '=', $sortTable . '.id')
                     ->orderBy($sortColumn, $sortedBy)
-                    ->addSelect($table.'.*');
+                    ->addSelect($table . '.*');
             } else {
                 $model = $model->orderBy($orderBy, $sortedBy);
             }

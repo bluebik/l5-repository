@@ -55,8 +55,9 @@ class RequestCriteria implements CriteriaInterface
             $searchData = $this->parserSearchData($search);
             $search = $this->parserSearchValue($search);
             $modelForceAndWhere = strtolower($searchJoin) === 'and';
+            $andWhereConditions = [];
 
-            $model = $model->where(function ($query) use ($fields, $search, $searchData, $isFirstField, $modelForceAndWhere, $andFields) {
+            $model = $model->where(function ($query) use ($fields, $search, $searchData, $isFirstField, $modelForceAndWhere, $andFields, &$andWhereConditions) {
                 /** @var Builder $query */
 
                 foreach ($fields as $field => $condition) {
@@ -85,7 +86,13 @@ class RequestCriteria implements CriteriaInterface
                         $relation = implode('.', $explode);
                     }
                     $modelTableName = $query->getModel()->getTable();
-                    if ($isFirstField || $modelForceAndWhere || in_array($field, $andFields)) {
+                    if (in_array($field, $andFields)) {
+                        $andWhereConditions = array_merge($andWhereConditions, [[
+                            'field' => $modelTableName . '.' . $field,
+                            'condition' => $condition,
+                            'value' => $value,
+                        ]]);
+                    } else if ($isFirstField || $modelForceAndWhere) {
                         if (!is_null($value)) {
                             if (!is_null($relation)) {
                                 $query->whereHas($relation, function ($query) use ($field, $condition, $value) {
@@ -109,6 +116,10 @@ class RequestCriteria implements CriteriaInterface
                     }
                 }
             });
+
+            foreach ($andWhereConditions as $andWhereCondition) {
+                $model->where($andWhereCondition['field'], $andWhereCondition['condition'], $andWhereCondition['value']);
+            }
         }
 
         if (isset($orderBy) && !empty($orderBy)) {

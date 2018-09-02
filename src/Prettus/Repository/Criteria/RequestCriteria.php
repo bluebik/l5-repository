@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Prettus\Repository\Contracts\CriteriaInterface;
 use Prettus\Repository\Contracts\RepositoryInterface;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Class RequestCriteria
@@ -120,6 +121,17 @@ class RequestCriteria implements CriteriaInterface
             foreach ($andWhereConditions as $andWhereCondition) {
                 $model->where($andWhereCondition['field'], $andWhereCondition['condition'], $andWhereCondition['value']);
             }
+
+            if (Schema::hasTable('taggables') && Schema::hasTable('tags')) {
+                $model->join('taggables', 'taggables.taggable_id', '=', $model->getModel()->getTable().'.id')
+                    ->join('tags', 'tags.id', '=', 'taggables.tag_id')
+                    ->orWhere(function ($query) use ($search) {
+                        $query
+                            ->where('taggables.taggable_type', $query->getModel()->getMorphClass())
+                            ->where('tags.name', 'like', '%"th": "%'.$search.'%"%');
+                    });
+            }
+
         }
 
         if (isset($orderBy) && !empty($orderBy)) {

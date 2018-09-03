@@ -61,7 +61,7 @@ class RequestCriteria implements CriteriaInterface
 
             $hasTaggableTable = Schema::hasTable('taggables') && Schema::hasTable('tags');
 
-            if ($hasTaggableTable) {
+            if ($hasTaggableTable && $search) {
                 $model = $model->leftJoin('taggables', 'taggables.taggable_id', '=', DB::raw($model->getModel()->getTable().'.id'))
                     ->leftJoin('tags', 'tags.id', '=', 'taggables.tag_id');
             }
@@ -125,7 +125,7 @@ class RequestCriteria implements CriteriaInterface
                     }
                 }
 
-                if ($hasTaggableTable) {
+                if ($hasTaggableTable && $search) {
                     $query->orWhere(function ($query) use ($search) {
                         $query
                             ->where('taggables.taggable_type', $query->getModel()->getMorphClass())

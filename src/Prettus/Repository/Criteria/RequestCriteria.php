@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Prettus\Repository\Contracts\CriteriaInterface;
 use Prettus\Repository\Contracts\RepositoryInterface;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Class RequestCriteria
@@ -58,7 +59,14 @@ class RequestCriteria implements CriteriaInterface
             $modelForceAndWhere = strtolower($searchJoin) === 'and';
             $andWhereConditions = [];
 
-            $model = $model->where(function ($query) use ($fields, $search, $searchData, $isFirstField, $modelForceAndWhere, $andFields, &$andWhereConditions) {
+            $hasTaggableTable = Schema::hasTable('taggables') && Schema::hasTable('tags');
+
+            if ($hasTaggableTable) {
+                $model = $model->leftJoin('taggables', 'taggables.taggable_id', '=', DB::raw($model->getModel()->getTable().'.id'))
+                    ->leftJoin('tags', 'tags.id', '=', 'taggables.tag_id');
+            }
+
+            $model = $model->where(function ($query) use ($fields, $search, $searchData, $isFirstField, $modelForceAndWhere, $andFields, &$andWhereConditions, $hasTaggableTable) {
                 /** @var Builder $query */
 
                 foreach ($fields as $field => $condition) {
@@ -116,22 +124,19 @@ class RequestCriteria implements CriteriaInterface
                         }
                     }
                 }
+
+                if ($hasTaggableTable) {
+                    $query->orWhere(function ($query) use ($search) {
+                        $query
+                            ->where('taggables.taggable_type', $query->getModel()->getMorphClass())
+                            ->where('tags.name', 'like', '%"th": "%'.$search.'%"%');
+                    });
+                }
             });
 
             foreach ($andWhereConditions as $andWhereCondition) {
                 $model->where($andWhereCondition['field'], $andWhereCondition['condition'], $andWhereCondition['value']);
             }
-
-            if (Schema::hasTable('taggables') && Schema::hasTable('tags')) {
-                $model->join('taggables', 'taggables.taggable_id', '=', $model->getModel()->getTable().'.id')
-                    ->join('tags', 'tags.id', '=', 'taggables.tag_id')
-                    ->orWhere(function ($query) use ($search) {
-                        $query
-                            ->where('taggables.taggable_type', $query->getModel()->getMorphClass())
-                            ->where('tags.name', 'like', '%"th": "%'.$search.'%"%');
-                    });
-            }
-
         }
 
         if (isset($orderBy) && !empty($orderBy)) {
@@ -166,10 +171,10 @@ class RequestCriteria implements CriteriaInterface
 
                 $model = $model
                     ->leftJoin($sortTable, $keyName, '=', $sortTable . '.id')
-                    ->orderBy($sortColumn, $sortedBy)
+                    ->orderBy($table . '.' . $sortColumn, $sortedBy)
                     ->addSelect($table . '.*');
             } else {
-                $model = $model->orderBy($orderBy, $sortedBy);
+                $model = $model->orderBy($model->getModel()->getTable() . '.' . $orderBy, $sortedBy);
             }
         }
 

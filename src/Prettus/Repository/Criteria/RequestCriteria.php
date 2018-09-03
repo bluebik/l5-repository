@@ -192,6 +192,8 @@ class RequestCriteria implements CriteriaInterface
             $model = $model->with($with);
         }
 
+        $model->distinct();
+
         return $model;
     }
 

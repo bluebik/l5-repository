@@ -62,7 +62,8 @@ class RequestCriteria implements CriteriaInterface
             $hasTaggableTable = Schema::hasTable('taggables') && Schema::hasTable('tags');
 
             if ($hasTaggableTable && $search) {
-                $model = $model->leftJoin('taggables', 'taggables.taggable_id', '=', DB::raw($model->getModel()->getTable().'.id'))
+                $model = $model->select($model->getModel()->getTable() . '.*')
+                    ->leftJoin('taggables', 'taggables.taggable_id', '=', DB::raw($model->getModel()->getTable().'.id'))
                     ->leftJoin('tags', 'tags.id', '=', 'taggables.tag_id');
             }
 

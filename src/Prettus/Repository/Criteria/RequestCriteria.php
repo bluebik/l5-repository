@@ -130,7 +130,7 @@ class RequestCriteria implements CriteriaInterface
                     $query->orWhere(function ($query) use ($search) {
                         $query
                             ->where('taggables.taggable_type', $query->getModel()->getMorphClass())
-                            ->where('tags.name', 'like', '%"th": "%'.$search.'%"%');
+                            ->where(DB::raw('LOWER(tags.name)'), 'like', '%"th": "%'.strtolower($search).'%"%');
                     });
                 }
             });

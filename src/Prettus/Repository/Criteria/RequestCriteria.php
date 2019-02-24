@@ -59,12 +59,17 @@ class RequestCriteria implements CriteriaInterface
             $modelForceAndWhere = strtolower($searchJoin) === 'and';
             $andWhereConditions = [];
 
-            $hasTaggableTable = Schema::hasTable('taggables') && Schema::hasTable('tags');
+            $hasTaggableTable = false;
+            if($model->getModel()->getTable() == 'news') {
 
-            if ($hasTaggableTable && $search) {
-                $model = $model->select($model->getModel()->getTable() . '.*')
-                    ->leftJoin('taggables', 'taggables.taggable_id', '=', DB::raw($model->getModel()->getTable().'.id'))
-                    ->leftJoin('tags', 'tags.id', '=', 'taggables.tag_id');
+                $hasTaggableTable = Schema::hasTable('taggables') && Schema::hasTable('tags');
+
+                if ($hasTaggableTable && $search) {
+                    $model = $model->select($model->getModel()->getTable() . '.*')
+                        ->leftJoin('taggables', 'taggables.taggable_id', '=', DB::raw($model->getModel()->getTable().'.id'))
+                        ->leftJoin('tags', 'tags.id', '=', 'taggables.tag_id');
+                }
+
             }
 
             $model = $model->where(function ($query) use ($fields, $search, $searchData, $isFirstField, $modelForceAndWhere, $andFields, &$andWhereConditions, $hasTaggableTable) {

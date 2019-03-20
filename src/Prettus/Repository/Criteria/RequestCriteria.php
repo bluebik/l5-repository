@@ -175,9 +175,14 @@ class RequestCriteria implements CriteriaInterface
                     $keyName = $table . '.' . $prefix . '_id';
                 }
 
+                $split = explode('.', $sortColumn);
+                if(count($split) == 1){
+                    $sortColumn = $table . '.' . $sortColumn;
+                }
+
                 $model = $model
                     ->leftJoin($sortTable, $keyName, '=', $sortTable . '.id')
-                    ->orderBy($table . '.' . $sortColumn, $sortedBy)
+                    ->orderBy($sortColumn, $sortedBy)
                     ->addSelect($table . '.*');
             } else {
                 $model = $model->orderBy($model->getModel()->getTable() . '.' . $orderBy, $sortedBy);

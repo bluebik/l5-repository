@@ -23,13 +23,6 @@ class RequestCriteria implements CriteriaInterface
     public function __construct(Request $request)
     {
         $this->request = $request;
-
-        if (isset($this->request->search)) {
-            $search = array('%', '_');
-            $replace   = array('\%', '\_');
-
-            $this->request->merge(['search' => str_replace($search, $replace, $this->request->search)]);
-        }
     }
 
 
@@ -46,6 +39,13 @@ class RequestCriteria implements CriteriaInterface
     {
         $fieldsSearchable = $repository->getFieldsSearchable();
         $search = $this->request->get(config('repository.criteria.params.search', 'search'), null);
+
+        if (isset($search)) {
+            $old = array('%', '_');
+            $replace   = array('\%', '\_');
+            $search = str_replace($old, $replace, $search);
+        }
+
         $searchFields = $this->request->get(config('repository.criteria.params.searchFields', 'searchFields'), null);
         $filter = $this->request->get(config('repository.criteria.params.filter', 'filter'), null);
         $orderBy = $this->request->get(config('repository.criteria.params.orderBy', 'orderBy'), null);

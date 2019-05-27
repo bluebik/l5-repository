@@ -23,6 +23,13 @@ class RequestCriteria implements CriteriaInterface
     public function __construct(Request $request)
     {
         $this->request = $request;
+
+        if (isset($this->request->search)) {
+            $search = array('%', '_');
+            $replace   = array('\%', '\_');
+
+            $this->request->merge(['search' => str_replace($search, $replace, $this->request->search)]);
+        }
     }
 
 
@@ -60,16 +67,15 @@ class RequestCriteria implements CriteriaInterface
             $andWhereConditions = [];
 
             $hasTaggableTable = false;
-            if($model->getModel()->getTable() == 'news') {
+            if ($model->getModel()->getTable() == 'news') {
 
                 $hasTaggableTable = Schema::hasTable('taggables') && Schema::hasTable('tags');
 
                 if ($hasTaggableTable && $search) {
                     $model = $model->select($model->getModel()->getTable() . '.*')
-                        ->leftJoin('taggables', 'taggables.taggable_id', '=', DB::raw($model->getModel()->getTable().'.id'))
+                        ->leftJoin('taggables', 'taggables.taggable_id', '=', DB::raw($model->getModel()->getTable() . '.id'))
                         ->leftJoin('tags', 'tags.id', '=', 'taggables.tag_id');
                 }
-
             }
 
             $model = $model->where(function ($query) use ($fields, $search, $searchData, $isFirstField, $modelForceAndWhere, $andFields, &$andWhereConditions, $hasTaggableTable) {
@@ -135,7 +141,7 @@ class RequestCriteria implements CriteriaInterface
                     $query->orWhere(function ($query) use ($search) {
                         $query
                             ->where('taggables.taggable_type', $query->getModel()->getMorphClass())
-                            ->where(DB::raw('LOWER(tags.name)'), 'like', '%"th": "%'.strtolower($search).'%"%');
+                            ->where(DB::raw('LOWER(tags.name)'), 'like', '%"th": "%' . strtolower($search) . '%"%');
                     });
                 }
             });
@@ -176,7 +182,7 @@ class RequestCriteria implements CriteriaInterface
                 }
 
                 $split = explode('.', $sortColumn);
-                if(count($split) == 1){
+                if (count($split) == 1) {
                     $sortColumn = $table . '.' . $sortColumn;
                 }
 
@@ -294,7 +300,6 @@ class RequestCriteria implements CriteriaInterface
             if (count($fields) == 0) {
                 throw new \Exception(trans('repository::criteria.fields_not_accepted', ['field' => implode(',', $searchFields)]));
             }
-
         }
 
         return $fields;
